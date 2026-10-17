@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tense Escape Room · Teacher</title>
+<style>
+/* Layout: teacher console for the projector — control bar on top, big join code in the lobby, live leaderboard + most-missed panel during play */
+:root{
+  --sky:#dcefff; --card:#ffffff; --ink:#1d2b4f; --muted:#5b6a8c; --line:#c9d9f0;
+  --sun:#ffc93c; --ok:#21a46b; --ok-soft:#dcf6ea; --bad:#e04b4b; --bad-soft:#fde4e4;
+  --r1:#3d7be0; --r2:#e2508a; --r3:#ec8417;
+  --font:"Times New Roman", Times, "Liberation Serif", serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--sky);color:var(--ink);font-family:var(--font);font-size:14pt;line-height:1.45;padding:16px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{margin:0;line-height:1.2}
+h1{font-size:18pt} h2{font-size:16pt} h3{font-size:14pt}
+button{font-family:var(--font);font-size:14pt;cursor:pointer;border:0;border-radius:12px;color:var(--ink)}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.btn{background:var(--ink);color:#fff;padding:10px 18px;font-weight:bold;box-shadow:0 4px 0 #0b1530}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0b1530}
+.btn.go{background:var(--ok);box-shadow:0 4px 0 #157a4e}
+.btn.stop{background:var(--bad);box-shadow:0 4px 0 #a83232}
+.btn.alt{background:var(--card);color:var(--ink);box-shadow:inset 0 0 0 2px var(--line),0 4px 0 var(--line)}
+.btn:disabled{opacity:.45;cursor:default}
+.bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:var(--card);border-radius:16px;padding:10px 16px;box-shadow:0 6px 0 var(--line)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.card{background:var(--card);border-radius:20px;padding:20px;box-shadow:0 6px 0 var(--line);display:flex;flex-direction:column;gap:14px}
+.muted{color:var(--muted)}
+.pill{display:inline-block;padding:3px 12px;border-radius:999px;font-weight:bold;font-size:12pt}
+.pill.lobby{background:#fff6d6;color:#8a6500}.pill.live{background:var(--ok-soft);color:var(--ok)}.pill.ended{background:#e6ebf3;color:var(--muted)}
+.code{font-size:64pt;font-weight:bold;letter-spacing:12px;line-height:1;font-variant-numeric:tabular-nums}
+.codebox{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+.url{font-size:18pt;font-weight:bold;color:var(--r1)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;min-height:44px}
+.chip{background:var(--sky);border-radius:999px;padding:6px 8px 6px 14px;display:flex;align-items:center;gap:6px;font-weight:bold;animation:pop .35s}
+.chip button,.x{background:transparent;padding:0 6px;color:var(--muted);font-size:14pt;line-height:1}
+.chip button:hover,.x:hover{color:var(--bad)}
+@keyframes pop{0%{transform:scale(.5)}70%{transform:scale(1.1)}100%{transform:scale(1)}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat{background:var(--card);border-radius:16px;padding:12px 16px;box-shadow:0 6px 0 var(--line)}
+.stat b{display:block;font-size:22pt;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:2.2fr 1fr;gap:16px;align-items:start}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{text-align:left;font-size:12pt;color:var(--muted);font-weight:normal;padding:6px 8px;border-bottom:2px solid var(--line);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid #e8eef8;vertical-align:middle}
+tr.top td:first-child{font-weight:bold}
+.rank{width:34px;font-weight:bold}
+.name{font-weight:bold;min-width:120px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);margin-right:6px}
+.dot.off{background:#b8c3d6}
+.prog{min-width:170px}
+.track{height:12px;border-radius:99px;background:#e8eef8;overflow:hidden;display:flex}
+.track i{display:block;height:100%}
+.prog small{color:var(--muted);font-size:11pt}
+.st{font-size:12pt;font-weight:bold;padding:2px 10px;border-radius:999px;white-space:nowrap}
+.st.lobby{background:#fff6d6;color:#8a6500}.st.playing{background:var(--sky);color:var(--r1)}.st.escaped{background:var(--ok-soft);color:var(--ok)}
+.st.timeup,.st.stopped{background:var(--bad-soft);color:var(--bad)}
+.low{color:var(--bad);font-weight:bold}
+.missed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.missed li{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start}
+.missed .n{background:var(--bad-soft);color:var(--bad);font-weight:bold;border-radius:10px;padding:2px 10px;font-variant-numeric:tabular-nums;text-align:center;min-width:44px}
+.missed .t{font-size:13pt}
+.missed .t small{display:block;color:var(--muted);font-size:11pt}
+.empty{color:var(--muted);text-align:center;padding:20px}
+@media (max-width:900px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.code{font-size:44pt;letter-spacing:6px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="card"><p class="muted" style="margin:0">Connecting…</p></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+firebase.initializeApp({apiKey:"AIzaSyAEAb6WWNJJN7OAj1A5FVNUx7Y_vxpHhjw",authDomain:"f2-eng-tenses-live.firebaseapp.com",
+  databaseURL:"https://f2-eng-tenses-live-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"f2-eng-tenses-live",
+  storageBucket:"f2-eng-tenses-live.firebasestorage.app",messagingSenderId:"591157249024",appId:"1:591157249024:web:9e7aa1bd6b3c497a6104e5"});
+const DB=firebase.database(),AUTH=firebase.auth(),TS=firebase.database.ServerValue.TIMESTAMP;
+const GAME_URL="f2-eng-tenses.vercel.app";
+const TOTAL=27, TOTAL_TIME=900;
+const QL=[[0,0,"A1","My brothers are very good at chemistry and math."],[0,1,"A2","Every Monday, the children have a lot of lessons at school."],[0,2,"A3","She sometimes goes shopping with her husband."],[0,3,"A4","Do you like History?"],[0,4,"A5","He doesn't usually drive to work. He usually walks."],[0,5,"A6","My aunt never loves rock music."],[0,6,"A7","Does your brother play soccer?"],[0,7,"A8","They never take a shower at night."],[0,8,"A9","We don't study / aren't studying English today."],[1,0,"B1","Sheema is practising for her dance performance."],[1,1,"B2","I am going to watch a movie at Cineplex."],[1,2,"B3","Why is Ann wearing her new dress?"],[1,3,"B4","Are the people going for a walk?"],[1,4,"B5","The boys are annoying everyone present at the party."],[1,5,"B6","My mother is knitting a sweater for my sister."],[1,6,"B7","Look! He is running after the dog."],[1,7,"B8","You are not telling the truth."],[1,8,"B9","Now the firemen are coming down the stairs."],[2,0,"C1","Does he eat hamburgers every day?"],[2,1,"C2","The baby is crying, because he is hungry."],[2,2,"C3","Rita is singing at the function."],[2,3,"C4","In the summer, I usually go to the beach with my close friends."],[2,4,"C6","The man is riding / rides a Royal Enfield."],[2,5,"C7","The sun rises in the East and sets in the West."],[2,6,"C8","My friend is living in Berlin now."],[2,7,"C9","Is mum cooking food in the kitchen?"],[2,8,"C10","She often goes to the movies with her younger sister."]];
+const QMAP={};QL.forEach(([r,i,src,full])=>QMAP[r+"_"+i]={src,full,room:r+1,n:i+1});
+const ROOMC=["var(--r1)","var(--r2)","var(--r3)"];
+const STLABEL={lobby:"Waiting",playing:"Playing",escaped:"Escaped",timeup:"Time up",stopped:"Stopped"};
+
+const app=document.getElementById("app");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=s=>{s=Math.max(0,s|0);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");};
+const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
+
+let code=null, game=null, gref=null, uid=null;
+
+AUTH.signInAnonymously().catch(err=>{app.innerHTML=`<div class="card"><h2>Could not connect</h2><p>${esc(err.message)}</p></div>`;});
+AUTH.onAuthStateChanged(u=>{if(!u)return;uid=u.uid;const saved=store.get("teacherGame");saved?watch(saved):home();});
+
+function home(msg){
+  stopWatch();code=null;game=null;store.set("teacherGame",null);
+  app.innerHTML=`<div class="bar"><h1>Tense Escape Room · Teacher</h1></div>
+   <div class="card" style="align-items:center;text-align:center;padding:40px 20px">
+     <h2>Start a live game for your class</h2>
+     <p class="muted" style="margin:0;max-width:52ch">You get a 6-digit code. Students open <b>${GAME_URL}</b>, type the code and a name, and you watch their scores live.</p>
+     ${msg?`<p class="low" style="margin:0">${esc(msg)}</p>`:""}
+     <button class="btn go" id="new">New game</button>
+   </div>`;
+  document.getElementById("new").onclick=newGame;
+}
+
+async function newGame(){
+  const b=document.getElementById("new");if(b){b.disabled=true;b.textContent="Creating…";}
+  try{
+    for(let t=0;t<8;t++){
+      const c=String(Math.floor(100000+Math.random()*900000));
+      const ex=await DB.ref("games/"+c+"/status").get();
+      if(ex.exists())continue;
+      await DB.ref("games/"+c).update({owner:uid,status:"lobby",createdAt:TS});
+      store.set("teacherGame",c);watch(c);return;
+    }
+    home("Could not create a game code. Please try again.");
+  }catch(e){home("Could not create the game: "+e.message);}
+}
+
+function stopWatch(){if(gref)gref.off();gref=null;}
+function watch(c){
+  stopWatch();code=c;gref=DB.ref("games/"+c);
+  gref.on("value",s=>{
+    const g=s.val();
+    if(!g||g.owner!==uid){store.set("teacherGame",null);home(g?"That game belongs to another device.":"The game was closed.");return;}
+    game=g;render();
+  },()=>{store.set("teacherGame",null);home("Lost access to that game.");});
+}
+
+// Same names get a number so scores stay apart (Ali, Ali 2)
+function players(){
+  const ps=Object.entries(game.players||{}).map(([id,p])=>({id,...p}));
+  ps.sort((a,b)=>(a.joinedAt||0)-(b.joinedAt||0));
+  const seen={};
+  ps.forEach(p=>{const k=(p.name||"").trim().toLowerCase();seen[k]=(seen[k]||0)+1;p.label=seen[k]>1?`${p.name} ${seen[k]}`:p.name;});
+  return ps;
+}
+
+function render(){
+  const ps=players();
+  if(game.status==="lobby")renderLobby(ps);else renderLive(ps);
+}
+
+function topBar(){
+  const st=game.status;
+  return `<div class="bar"><div class="row"><h1>Tense Escape Room · Teacher</h1>
+     <span class="pill ${st}">${st==="lobby"?"Lobby":st==="live"?"Live":"Ended"}</span>
+     <span class="muted">Code <b style="color:var(--ink);letter-spacing:2px">${esc(code)}</b></span></div>
+   <div class="row">
+     ${st==="lobby"?`<button class="btn go" id="start">Start game</button><button class="btn alt" id="cancel">Cancel</button>`:""}
+     ${st==="live"?`<button class="btn stop" id="end">End game</button>`:""}
+     ${st!=="lobby"?`<button class="btn alt" id="csv">Download results</button>`:""}
+     ${st==="ended"?`<button class="btn" id="again">New game</button>`:""}
+   </div></div>`;
+}
+function wireTop(ps){
+  const on=(id,f)=>{const e=document.getElementById(id);if(e)e.onclick=f;};
+  on("start",()=>gref.update({status:"live",startedAt:TS}));
+  on("cancel",()=>{if(confirm("Cancel this game? Students in the lobby will be sent back."))gref.remove().then(()=>home());});
+  on("end",()=>{if(confirm("End the game for everyone now?"))gref.child("status").set("ended");});
+  on("csv",()=>downloadCSV(ps));
+  on("again",()=>{store.set("teacherGame",null);newGame();});
+  document.querySelectorAll("[data-kick]").forEach(b=>b.onclick=()=>{
+    const p=ps.find(x=>x.id===b.dataset.kick);
+    if(confirm(`Remove ${p?p.label:"this student"} from the game?`))gref.child("players/"+b.dataset.kick).remove();
+  });
+}
+
+function renderLobby(ps){
+  app.innerHTML=`${topBar()}
+   <div class="card codebox">
+     <span class="muted">Go to</span><span class="url">${GAME_URL}</span>
+     <span class="muted">and enter the game code</span>
+     <span class="code">${esc(code)}</span>
+   </div>
+   <div class="card"><div class="row" style="justify-content:space-between"><h2>Students joined: ${ps.length}</h2>
+     <span class="muted">Press Start when everyone is in. 全部加入后按 Start。</span></div>
+     <div class="chips">${ps.length?ps.map(p=>`<span class="chip"><span class="dot ${p.online===false?"off":""}"></span>${esc(p.label)}<button data-kick="${p.id}" aria-label="Remove ${esc(p.label)}">×</button></span>`).join(""):`<span class="muted">Waiting for students to join…</span>`}</div>
+   </div>`;
+  wireTop(ps);
+}
+
+function renderLive(ps){
+  const ranked=[...ps].sort((a,b)=>(b.score||0)-(a.score||0)||(b.correct||0)-(a.correct||0)||(b.timeLeft||0)-(a.timeLeft||0));
+  const done=ps.filter(p=>p.state==="escaped").length;
+  const playing=ps.filter(p=>p.state==="playing").length;
+  const avg=ps.length?Math.round(ps.reduce((s,p)=>s+(p.score||0),0)/ps.length):0;
+  const miss={};ps.forEach(p=>Object.keys(p.missed||{}).forEach(k=>miss[k]=(miss[k]||0)+1));
+  const top=Object.entries(miss).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  app.innerHTML=`${topBar()}
+   <div class="stats">
+     <div class="stat">Students<b>${ps.length}</b></div>
+     <div class="stat">Still playing<b>${playing}</b></div>
+     <div class="stat">Escaped<b>${done}</b></div>
+     <div class="stat">Average score<b>${avg}</b></div>
+   </div>
+   <div class="grid">
+     <div class="card"><h2>Live leaderboard</h2>
+       <div class="tablewrap"><table>
+         <thead><tr><th>#</th><th>Name</th><th>Progress</th><th>Letters</th><th>Score</th><th>1st-try wrong</th><th>Time left</th><th>Status</th><th></th></tr></thead>
+         <tbody>${ranked.length?ranked.map((p,i)=>{
+           const c=p.correct||0,room=Math.min(3,Math.floor(c/9)+1);
+           const segs=[0,1,2].map(r=>{const n=Math.max(0,Math.min(9,c-r*9));return `<i style="width:${n/TOTAL*100}%;background:${ROOMC[r]}"></i>`;}).join("");
+           const st=p.state||"lobby";
+           return `<tr class="${i<3?"top":""}"><td class="rank">${i+1}</td>
+             <td class="name"><span class="dot ${p.online===false?"off":""}"></span>${esc(p.label)}</td>
+             <td class="prog"><div class="track">${segs}</div><small>${c}/27 · ${st==="escaped"?"Done":"Room "+room}</small></td>
+             <td>${p.letters||0}/9</td><td><b>${p.score||0}</b>${p.stars?` <span style="color:#c99a17">${"★".repeat(p.stars)}</span>`:""}</td>
+             <td>${p.wrong||0}</td>
+             <td class="${(p.timeLeft??TOTAL_TIME)<=60&&st==="playing"?"low":""}">${st==="escaped"&&p.timeUsed!=null?"used "+fmt(p.timeUsed):fmt(p.timeLeft??TOTAL_TIME)}</td>
+             <td><span class="st ${st}">${STLABEL[st]||st}</span></td>
+             <td><button class="x" data-kick="${p.id}" aria-label="Remove ${esc(p.label)}">×</button></td></tr>`;}).join(""):`<tr><td colspan="9" class="empty">No students joined this game.</td></tr>`}</tbody>
+       </table></div>
+     </div>
+     <div class="card"><h2>Most missed questions</h2>
+       <p class="muted" style="margin:0;font-size:12pt">Students who got it wrong on the first try</p>
+       ${top.length?`<ul class="missed">${top.map(([k,n])=>{const q=QMAP[k]||{src:k,full:""};return `<li><span class="n">${n}</span><span class="t"><b>${esc(q.src)}</b> · Room ${q.room} Q${q.n}<small>${esc(q.full)}</small></span></li>`;}).join("")}</ul>`:`<p class="empty" style="margin:0">No mistakes yet.</p>`}
+     </div>
+   </div>`;
+  wireTop(ps);
+}
+
+function downloadCSV(ps){
+  const ranked=[...ps].sort((a,b)=>(b.score||0)-(a.score||0));
+  const rows=[["Rank","Name","Status","Score","Stars","Correct (of 27)","Letters (of 9)","First-try wrong","Time left","Time used","Questions missed first try"]];
+  ranked.forEach((p,i)=>rows.push([i+1,p.label,STLABEL[p.state]||p.state||"",p.score||0,p.stars||"",p.correct||0,p.letters||0,p.wrong||0,
+    fmt(p.timeLeft??TOTAL_TIME),p.timeUsed!=null?fmt(p.timeUsed):"",Object.keys(p.missed||{}).map(k=>(QMAP[k]||{}).src||k).join(" ")]));
+  const csv="﻿"+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  const d=new Date();a.download=`tense-escape-room-${code}-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}.csv`;
+  document.body.appendChild(a);a.click();a.remove();
+}
+</script>
+</body>
+</html>
