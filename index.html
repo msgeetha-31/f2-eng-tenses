@@ -312,7 +312,8 @@ function startScreen(){
   nm.onkeydown=e=>{if(e.key==="Enter"){if(jb&&!jb.disabled)jb.click();else if(!go.disabled&&!jb)go.click();}};
   go.onclick=()=>{SFX.click();G.code=null;resetGame(nm.value.trim());begin();};
   if(jb)jb.onclick=()=>{SFX.click();joinGame(gc.value.trim(),nm.value.trim());};
-  (gc||nm).focus();
+  const urlCode=(new URLSearchParams(location.search).get("code")||"").replace(/\D/g,"").slice(0,6);
+  if(gc&&urlCode){gc.value=urlCode;upd();nm.focus();}else (gc||nm).focus();
 }
 function resetGame(name){Object.assign(G,{name,room:0,qi:0,timeLeft:TOTAL_TIME,score:0,correct:0,firstWrong:[],letters:[],letterOrder:shuffle(PASSWORD.split("")),started:false});}
 function begin(){if(G.started)return;G.started=true;renderStatus();startTimer();roomIntro();sync({state:"playing"});}

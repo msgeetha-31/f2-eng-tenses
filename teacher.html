@@ -35,6 +35,10 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 .code{font-size:64pt;font-weight:bold;letter-spacing:12px;line-height:1;font-variant-numeric:tabular-nums}
 .codebox{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
 .url{font-size:18pt;font-weight:bold;color:var(--r1)}
+.join{flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:center;gap:40px}
+.qr{display:flex;flex-direction:column;align-items:center;gap:6px}
+.qr svg{width:min(300px,70vw);height:auto;background:#fff;border-radius:12px}
+.grid>*,.join>*{min-width:0}
 .chips{display:flex;flex-wrap:wrap;gap:8px;min-height:44px}
 .chip{background:var(--sky);border-radius:999px;padding:6px 8px 6px 14px;display:flex;align-items:center;gap:6px;font-weight:bold;animation:pop .35s}
 .chip button,.x{background:transparent;padding:0 6px;color:var(--muted);font-size:14pt;line-height:1}
@@ -77,6 +81,7 @@ tr.top td:first-child{font-weight:bold}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
 firebase.initializeApp({apiKey:"AIzaSyAEAb6WWNJJN7OAj1A5FVNUx7Y_vxpHhjw",authDomain:"f2-eng-tenses-live.firebaseapp.com",
   databaseURL:"https://f2-eng-tenses-live-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"f2-eng-tenses-live",
@@ -174,12 +179,20 @@ function wireTop(ps){
   });
 }
 
+function qrSVG(text){
+  if(typeof qrcode==="undefined")return "";
+  const q=qrcode(0,"M");q.addData(text);q.make();
+  return q.createSvgTag({cellSize:8,margin:2,scalable:true});
+}
 function renderLobby(ps){
   app.innerHTML=`${topBar()}
-   <div class="card codebox">
-     <span class="muted">Go to</span><span class="url">${GAME_URL}</span>
-     <span class="muted">and enter the game code</span>
-     <span class="code">${esc(code)}</span>
+   <div class="card join">
+     <div class="qr">${qrSVG("https://"+GAME_URL+"/?code="+code)}<span class="muted">Scan to join · 扫码加入</span></div>
+     <div class="codebox">
+       <span class="muted">or go to</span><span class="url">${GAME_URL}</span>
+       <span class="muted">and enter the game code</span>
+       <span class="code">${esc(code)}</span>
+     </div>
    </div>
    <div class="card"><div class="row" style="justify-content:space-between"><h2>Students joined: ${ps.length}</h2>
      <span class="muted">Press Start when everyone is in. 全部加入后按 Start。</span></div>
