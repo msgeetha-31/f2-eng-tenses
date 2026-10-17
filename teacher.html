@@ -194,7 +194,7 @@ function topBar(){
   const st=game.status;
   return `<div class="bar"><div class="row"><h1>Tense Escape Room · Teacher</h1>
      <span class="pill ${st}">${st==="lobby"?"Lobby":st==="live"?"Live":"Ended"}</span>
-     <span class="muted">Code <b style="color:var(--ink);letter-spacing:2px">${esc(code)}</b></span></div>
+     <span class="muted">Code <b style="color:var(--torch);letter-spacing:2px">${esc(code)}</b></span></div>
    <div class="row">
      ${st==="lobby"?`<button class="btn go" id="start">Start game</button><button class="btn alt" id="cancel">Cancel</button>`:""}
      ${st==="live"?`<button class="btn stop" id="end">End game</button>`:""}
