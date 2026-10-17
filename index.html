@@ -116,11 +116,53 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-of
 .chest{width:170px;margin:0 auto;filter:drop-shadow(0 0 18px #ffd65a)}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:30}
 @media (max-width:560px){.opts,.rooms3,.stats{grid-template-columns:1fr}.match{gap:8px 10px}.mascot{width:80px;height:80px}}
+[hidden]{display:none!important}
+/* ===== Dungeon escape-room theme (overrides) ===== */
+:root{--stone:#141826;--torch:#ffb347;--blood:#ff3b4e;--parch:#f6eedb;--ink:#1d2236}
+body{background-color:var(--stone);
+  background-image:radial-gradient(ellipse at 50% 35%,rgba(255,170,80,.12),transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='40'%3E%3Crect width='80' height='40' fill='%231a1f30'/%3E%3Cpath d='M0 1H80M0 21H80M40 1V21M0 21V40M80 21V40' stroke='%23070912' stroke-opacity='.7' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+  background-attachment:fixed}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(circle at 6% 24%,rgba(255,150,50,.28),transparent 28%),radial-gradient(circle at 95% 24%,rgba(255,150,50,.28),transparent 28%),
+  radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.8) 100%);animation:flicker 3.2s infinite}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;box-shadow:inset 0 0 120px 30px var(--blood);transition:opacity .4s}
+body.danger::after{animation:heartbeat 1s infinite}
+@keyframes flicker{0%,100%{opacity:1}8%{opacity:.82}12%{opacity:.97}40%{opacity:.9}43%{opacity:1}70%{opacity:.86}74%{opacity:.98}}
+@keyframes heartbeat{0%,100%{opacity:.15}15%{opacity:.75}30%{opacity:.25}45%{opacity:.6}}
+#embers{position:fixed;inset:0;pointer-events:none;z-index:0}
+.deco svg{opacity:.9}
+.deco .chain{opacity:.55}
+.deco .gear{opacity:.6;animation:spin 40s linear infinite}
+.flame{transform-origin:27px 50px;animation:flame .18s infinite alternate}
+@keyframes flame{from{transform:scale(1,1) skewX(-2deg)}to{transform:scale(.92,1.08) skewX(3deg)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.status{background:rgba(12,15,28,.88);color:#f3e6c8;border:1px solid rgba(255,179,71,.35);box-shadow:0 0 24px rgba(255,140,40,.15),0 6px 0 #05060c}
+.status .muted{color:#b9ad92}
+.keys span{border-color:rgba(255,179,71,.35);color:#1d2236}
+.keys span.got{background:var(--torch);border-color:var(--torch);box-shadow:0 0 12px var(--torch)}
+.status .time{color:var(--torch);text-shadow:0 0 8px rgba(255,179,71,.6)}
+.status .time.low{color:var(--blood);text-shadow:0 0 10px var(--blood);animation:tick 1s steps(1) infinite}
+@keyframes tick{50%{opacity:.45}}
+.mute{color:#f3e6c8}
+.card{background:var(--parch);color:var(--ink);box-shadow:0 0 0 2px rgba(255,179,71,.3),0 0 40px rgba(255,140,40,.18),0 24px 50px rgba(0,0,0,.7)}
+.door{width:150px;height:200px;filter:drop-shadow(0 0 18px rgba(0,0,0,.6))}
+.door .leaf{transition:transform 1s .45s}
+.door .padlock{transition:transform .5s ease-in,opacity .5s ease-in;transform-origin:70px 120px}
+.door.open .padlock{transform:translateY(70px) rotate(25deg);opacity:0}
+.door:not(.open) .padlock{animation:lockpulse 1.6s infinite}
+@keyframes lockpulse{50%{filter:brightness(1.35)}}
+.flash{position:fixed;inset:0;pointer-events:none;z-index:40;animation:fl .6s ease-out forwards}
+.flash.bad{box-shadow:inset 0 0 160px 50px var(--blood);background:rgba(255,40,60,.12)}
+.flash.good{box-shadow:inset 0 0 160px 40px #2bd47d}
+@keyframes fl{to{opacity:0}}
+@media (max-width:560px){.deco .torch,.deco .chain{display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 
+<canvas id="embers" aria-hidden="true"></canvas>
 <div class="deco" id="deco" aria-hidden="true"></div>
 <canvas id="confetti" aria-hidden="true"></canvas>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -280,11 +322,21 @@ function tiki(mood="happy",cls=""){
    <line x1="50" y1="54" x2="64" y2="40" stroke="#ff8a5b" stroke-width="3" stroke-linecap="round"/>
    ${eyes}<circle cx="26" cy="62" r="5" fill="#ffb3b3"/><circle cx="74" cy="62" r="5" fill="#ffb3b3"/>${mouth}${tears}</svg>`;
 }
+// Iron dungeon door with a glowing padlock in the room's colour
 function doorSVG(color){
-  return `<svg class="leaf" viewBox="0 0 140 180"><rect x="4" y="4" width="132" height="172" rx="60" ry="60" fill="${color}" stroke="#1d2b4f" stroke-width="5"/>
-   <rect x="22" y="40" width="96" height="50" rx="20" fill="#ffffff55"/><rect x="22" y="104" width="96" height="56" rx="12" fill="#ffffff33"/>
-   <circle cx="54" cy="62" r="5" fill="#1d2b4f"/><circle cx="86" cy="62" r="5" fill="#1d2b4f"/><path d="M58 74 Q70 84 82 74" stroke="#1d2b4f" stroke-width="4" fill="none" stroke-linecap="round"/>
-   <circle cx="112" cy="110" r="9" fill="#ffc93c" stroke="#1d2b4f" stroke-width="3"/></svg>`;
+  const rivets=[20,60,100,140,170].map(y=>`<circle cx="16" cy="${y}" r="3.2" fill="#9aa3b5"/><circle cx="124" cy="${y}" r="3.2" fill="#9aa3b5"/>`).join("");
+  return `<svg class="leaf" viewBox="0 0 140 190" role="img" aria-label="Locked iron door">
+   <defs><linearGradient id="iron" x1="0" x2="1"><stop offset="0" stop-color="#3a4256"/><stop offset=".5" stop-color="#58617a"/><stop offset="1" stop-color="#2c3344"/></linearGradient>
+   <radialGradient id="glow"><stop offset="0" stop-color="${color}" stop-opacity=".9"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient></defs>
+   <path d="M4 186 V60 Q4 4 70 4 Q136 4 136 60 V186 Z" fill="url(#iron)" stroke="#11141d" stroke-width="5"/>
+   <path d="M30 186V40M55 186V22M85 186V22M110 186V40" stroke="#232938" stroke-width="5"/>
+   <rect x="8" y="70" width="124" height="12" fill="#232938"/><rect x="8" y="140" width="124" height="12" fill="#232938"/>
+   ${rivets}
+   <g class="padlock"><circle cx="70" cy="112" r="34" fill="url(#glow)"/>
+    <path d="M58 106 V96 a12 12 0 0 1 24 0 V106" fill="none" stroke="#c9ced8" stroke-width="6" stroke-linecap="round"/>
+    <rect x="52" y="104" width="36" height="30" rx="5" fill="${color}" stroke="#11141d" stroke-width="3"/>
+    <circle cx="70" cy="116" r="4" fill="#11141d"/><rect x="68" y="118" width="4" height="9" fill="#11141d"/></g>
+   </svg>`;
 }
 const chestSVG=`<svg class="chest" viewBox="0 0 170 130" role="img" aria-label="Glowing treasure chest">
   <path d="M15 55 Q15 15 85 15 Q155 15 155 55 Z" fill="#c8742c" stroke="#1d2b4f" stroke-width="5"/>
@@ -293,14 +345,26 @@ const chestSVG=`<svg class="chest" viewBox="0 0 170 130" role="img" aria-label="
   <rect x="70" y="50" width="30" height="26" rx="6" fill="#ffe08a" stroke="#1d2b4f" stroke-width="4"/>
   <circle cx="85" cy="61" r="4" fill="#1d2b4f"/><circle cx="40" cy="8" r="4" fill="#ffc93c"/><circle cx="130" cy="6" r="3" fill="#ffc93c"/></svg>`;
 
-// background decoration: clocks, stars, pencils
+// background decoration: wall torches, hanging chains, padlocks, a slow gear
 (function deco(){
-  const star=c=>`<svg width="34" height="34" viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 16.9 5.9 20.4l1.5-6.8L2.2 9l6.9-.7z" fill="${c}"/></svg>`;
-  const clock=`<svg width="52" height="52" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff" stroke="#3d7be0" stroke-width="2"/><path d="M12 6v6l4 2" stroke="#3d7be0" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
-  const pencil=`<svg width="60" height="20" viewBox="0 0 60 20"><rect x="8" y="5" width="40" height="10" fill="#ffc93c" stroke="#1d2b4f" stroke-width="1.5"/><path d="M48 5 L58 10 L48 15Z" fill="#f3d9b1" stroke="#1d2b4f" stroke-width="1.5"/><rect x="2" y="5" width="6" height="10" rx="2" fill="#e2508a" stroke="#1d2b4f" stroke-width="1.5"/></svg>`;
-  const items=[[star("#ffc93c"),4,8],[clock,88,6],[pencil,6,70],[star("#e2508a"),92,40],[clock,2,40],[star("#3d7be0"),80,85],[pencil,84,62],[star("#ec8417"),14,92],[star("#ffc93c"),50,96]];
-  $("deco").innerHTML=items.map(([s,x,y],i)=>s.replace("<svg",`<svg style="left:${x}%;top:${y}%;transform:rotate(${(i*37)%60-30}deg)"`)).join("");
+  const torch=`<svg class="torch" width="54" height="120" viewBox="0 0 54 120"><g class="flame"><path d="M27 6 C40 24 42 36 34 48 C31 53 23 53 20 48 C12 36 14 24 27 6Z" fill="#ff7a1a"/><path d="M27 20 C34 30 34 39 30 45 C28 48 26 48 24 45 C20 39 20 30 27 20Z" fill="#ffd166"/></g>
+    <path d="M14 52 H40 L34 70 H20 Z" fill="#5a3b22" stroke="#1a1208" stroke-width="2"/><rect x="23" y="70" width="8" height="40" fill="#3b2716"/><rect x="10" y="104" width="34" height="8" rx="2" fill="#2b2f3d"/></svg>`;
+  const chain=h=>`<svg class="chain" width="18" height="${h}" viewBox="0 0 18 ${h}">${Array.from({length:Math.floor(h/16)},(_,i)=>`<rect x="${i%2?6:3}" y="${i*16}" width="${i%2?6:12}" height="18" rx="6" fill="none" stroke="#6b7385" stroke-width="3"/>`).join("")}</svg>`;
+  const lock=`<svg width="44" height="54" viewBox="0 0 44 54"><path d="M12 24V16a10 10 0 0 1 20 0v8" fill="none" stroke="#6b7385" stroke-width="5"/><rect x="6" y="22" width="32" height="28" rx="5" fill="#3a4256" stroke="#1a1d29" stroke-width="2"/><circle cx="22" cy="34" r="3.5" fill="#11141d"/><rect x="20.5" y="35" width="3" height="8" fill="#11141d"/></svg>`;
+  const gear=`<svg class="gear" width="110" height="110" viewBox="0 0 100 100"><path fill="#2a3043" d="M50 20l6 0 2 9 7 3 8-5 4 4-5 8 3 7 9 2v6l-9 2-3 7 5 8-4 4-8-5-7 3-2 9h-6l-2-9-7-3-8 5-4-4 5-8-3-7-9-2v-6l9-2 3-7-5-8 4-4 8 5 7-3z"/><circle cx="53" cy="53" r="12" fill="#151927"/></svg>`;
+  const items=[[torch,2,18],[torch,92,18],[chain(160),12,0],[chain(110),84,0],[lock,6,62],[lock,88,74],[gear,78,82],[gear,-4,86]];
+  $("deco").innerHTML=items.map(([s,x,y])=>s.replace("<svg",`<svg style="left:${x}%;top:${y}%"`)).join("");
 })();
+// floating embers
+(function embers(){
+  const c=$("embers");if(!c||matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const x=c.getContext("2d");let W,H;const fit=()=>{W=c.width=innerWidth;H=c.height=innerHeight;};fit();addEventListener("resize",fit);
+  const ps=Array.from({length:36},()=>({x:Math.random(),y:Math.random(),r:1+Math.random()*2.2,s:.0006+Math.random()*.0012,d:Math.random()*6}));
+  (function f(){x.clearRect(0,0,W,H);for(const p of ps){p.y-=p.s;p.d+=.02;if(p.y<-.02){p.y=1.02;p.x=Math.random();}
+    const a=.35+.35*Math.sin(p.d*3);x.fillStyle=`rgba(255,${140+Math.floor(60*Math.sin(p.d))},60,${a})`;
+    x.beginPath();x.arc(p.x*W+Math.sin(p.d)*12,p.y*H,p.r,0,7);x.fill();}requestAnimationFrame(f);})();
+})();
+function flash(kind){const d=document.createElement("div");d.className="flash "+kind;document.body.appendChild(d);setTimeout(()=>d.remove(),600);}
 
 // ===== State =====
 const G={name:"",room:0,qi:0,timeLeft:TOTAL_TIME,score:0,correct:0,firstWrong:[],letters:[],letterOrder:[],timer:null,triedWrong:false,hinted:false,solved:false,phase:"start"};
@@ -323,13 +387,14 @@ function renderStatus(){
    <span class="item"><button class="mute" id="music" aria-label="${musicOn?"Turn music off":"Turn music on"}" style="${musicOn?"":"opacity:.35"}">🎵</button><button class="mute" id="mute" aria-label="${muted?"Turn sound on":"Turn sound off"}">${muted?"🔇":"🔊"}</button></span>`;
   $("mute").onclick=()=>{muted=!muted;BGM.level();renderStatus();};
   $("music").onclick=()=>{musicOn=!musicOn;BGM.level();renderStatus();};
+  document.body.classList.toggle("danger",!!G.started&&G.timeLeft<=60&&G.phase!=="done"&&G.phase!=="over");
 }
 const card=$("card");
 function setRoomColor(r){card.style.setProperty("--rc",r==null?"var(--sun)":ROOMS[r].c);card.style.setProperty("--rs",r==null?"#fff6d6":ROOMS[r].s);}
 
 // ===== Start screen =====
 function startScreen(){
-  stopTimer();BGM.stop();if(G.code)leaveLive();G.phase="start";G.started=false;
+  stopTimer();BGM.stop();if(G.code)leaveLive();G.phase="start";G.started=false;document.body.classList.remove("danger");
   setRoomColor(null);$("status").hidden=true;
   card.innerHTML=`
    <div class="talk">${tiki("happy","bounce")}<div class="bubble"><h1>Tense Escape Room</h1>
@@ -422,7 +487,7 @@ function roomIntro(){
     <div class="door" id="door">${doorSVG(r.c)}</div>
     <p style="margin:0">Signal words: <b>${r.signal}</b></p>
     <button class="btn" id="enter">Open the door</button></div>`;
-  $("enter").onclick=()=>{SFX.click();$("door").classList.add("open");setTimeout(()=>{G.qi=0;question();},700);};
+  $("enter").onclick=()=>{SFX.click();tone([392,523,784],.09,"sawtooth");$("door").classList.add("open");setTimeout(()=>{G.qi=0;question();},1300);};
 }
 
 // ===== Question =====
@@ -447,7 +512,7 @@ function showHint(){
   fb.className="fb hintbox";fb.innerHTML=`<b>💡 Hint</b>${esc(q.h)}<span class="zh">${esc(q.hz)}</span>`;
 }
 function wrong(){
-  SFX.bad();
+  SFX.bad();flash("bad");
   if(!G.triedWrong){G.triedWrong=true;G.firstWrong.push([G.room,G.qi]);if(G.ref)G.ref.child("missed/"+G.room+"_"+G.qi).set(true).catch(()=>{});}
   penalty(WRONG_PEN,$("acts"));
   const q=QS[G.room][G.qi];const fb=$("fb");
@@ -456,7 +521,7 @@ function wrong(){
   G.hinted=true;const h=$("hint");if(h)h.disabled=true;
 }
 function right(){
-  if(G.solved)return;G.solved=true;SFX.ok();
+  if(G.solved)return;G.solved=true;SFX.ok();flash("good");
   const q=QS[G.room][G.qi];
   G.score+=G.triedWrong?50:100;G.correct++;
   let gotLetter="";
