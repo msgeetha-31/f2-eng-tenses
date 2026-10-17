@@ -221,6 +221,46 @@ function tone(freqs,dur=.12,type="triangle"){
     const t=actx.currentTime+i*dur;g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+dur*1.6);
     o.connect(g).connect(actx.destination);o.start(t);o.stop(t+dur*1.7);});}catch(e){}
 }
+// ===== Background music: original chiptune loop, generated live (I–vi–IV–V in C) =====
+let musicOn=true;
+const BGM={timer:null,step:0,next:0,bus:null,noise:null,
+  MEL:[72,0,76,79,76,0,72,74, 76,0,72,69,72,0,0,74, 77,0,76,72,74,0,77,76, 74,0,71,67,71,74,79,0,
+       79,0,76,72,76,79,84,0, 81,0,79,76,72,0,76,0, 77,76,74,72,74,0,72,69, 67,71,74,79,77,74,71,0],
+  BASS:[48,45,41,43,48,45,41,43],
+  hz:m=>440*Math.pow(2,(m-69)/12),
+  ctx(){actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==="suspended")actx.resume();return actx;},
+  start(){
+    if(this.timer)return;
+    try{const c=this.ctx();
+      if(!this.bus){this.bus=c.createGain();this.bus.connect(c.destination);
+        const n=c.createBuffer(1,c.sampleRate*0.2,c.sampleRate),d=n.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;this.noise=n;}
+      this.level();this.step=0;this.next=c.currentTime+0.1;
+      this.timer=setInterval(()=>this.tick(),25);
+    }catch(e){}
+  },
+  stop(){clearInterval(this.timer);this.timer=null;if(this.bus&&actx)this.bus.gain.setTargetAtTime(0,actx.currentTime,0.05);},
+  level(){if(this.bus&&actx)this.bus.gain.setTargetAtTime(muted||!musicOn?0:1,actx.currentTime,0.05);},
+  tempo(){return (G.started&&G.timeLeft<=60&&G.phase!=="done"&&G.phase!=="over")?168:132;},
+  tick(){
+    const c=actx;
+    while(this.next<c.currentTime+0.15){
+      const s=this.step%64,t=this.next,dur=60/this.tempo()/2;
+      const m=this.MEL[s];if(m)this.note("square",this.hz(m),t,dur*0.9,0.035);
+      if(s%8===0)this.note("triangle",this.hz(this.BASS[Math.floor(s/8)]),t,dur*3.5,0.09);
+      if(s%8===4)this.note("triangle",this.hz(this.BASS[Math.floor(s/8)]+7),t,dur*1.8,0.06);
+      if(s%4===0)this.kick(t);
+      this.hat(t,s%2?0.025:0.012);
+      this.step++;this.next+=dur;
+    }
+  },
+  note(type,f,t,d,v){const c=actx,o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.value=f;
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    o.connect(g).connect(this.bus);o.start(t);o.stop(t+d+0.02);},
+  kick(t){const c=actx,o=c.createOscillator(),g=c.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(45,t+0.12);
+    g.gain.setValueAtTime(0.12,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.15);o.connect(g).connect(this.bus);o.start(t);o.stop(t+0.16);},
+  hat(t,v){const c=actx,s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();s.buffer=this.noise;f.type="highpass";f.frequency.value=7000;
+    g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.04);s.connect(f).connect(g).connect(this.bus);s.start(t);s.stop(t+0.05);}
+};
 const SFX={ok:()=>tone([660,880]),bad:()=>tone([220,180],.16,"square"),key:()=>tone([784,988,1318],.1),win:()=>tone([523,659,784,1046,1318],.13),click:()=>tone([520],.05)};
 
 // ===== Mascot: Tiki the clock =====
@@ -280,15 +320,16 @@ function renderStatus(){
    <span class="item time ${G.timeLeft<=60?"low":""}" aria-label="Time left">⏱ ${fmt(G.timeLeft)}</span>
    <span class="item">★ ${G.score}</span>
    <span class="keys" aria-label="Password letters">${Array.from({length:9},(_,i)=>`<span class="${G.letters[i]?"got":""}">${G.letters[i]||""}</span>`).join("")}</span>
-   <button class="mute" id="mute" aria-label="${muted?"Turn sound on":"Turn sound off"}">${muted?"🔇":"🔊"}</button>`;
-  $("mute").onclick=()=>{muted=!muted;renderStatus();};
+   <span class="item"><button class="mute" id="music" aria-label="${musicOn?"Turn music off":"Turn music on"}" style="${musicOn?"":"opacity:.35"}">🎵</button><button class="mute" id="mute" aria-label="${muted?"Turn sound on":"Turn sound off"}">${muted?"🔇":"🔊"}</button></span>`;
+  $("mute").onclick=()=>{muted=!muted;BGM.level();renderStatus();};
+  $("music").onclick=()=>{musicOn=!musicOn;BGM.level();renderStatus();};
 }
 const card=$("card");
 function setRoomColor(r){card.style.setProperty("--rc",r==null?"var(--sun)":ROOMS[r].c);card.style.setProperty("--rs",r==null?"#fff6d6":ROOMS[r].s);}
 
 // ===== Start screen =====
 function startScreen(){
-  stopTimer();if(G.code)leaveLive();G.phase="start";G.started=false;
+  stopTimer();BGM.stop();if(G.code)leaveLive();G.phase="start";G.started=false;
   setRoomColor(null);$("status").hidden=true;
   card.innerHTML=`
    <div class="talk">${tiki("happy","bounce")}<div class="bubble"><h1>Tense Escape Room</h1>
@@ -310,8 +351,8 @@ function startScreen(){
   const upd=()=>{const n=!!nm.value.trim();go.disabled=!n;if(jb)jb.disabled=!(n&&/^\d{6}$/.test(gc.value.trim()));};
   nm.oninput=upd;if(gc)gc.oninput=()=>{gc.value=gc.value.replace(/\D/g,"");upd();};
   nm.onkeydown=e=>{if(e.key==="Enter"){if(jb&&!jb.disabled)jb.click();else if(!go.disabled&&!jb)go.click();}};
-  go.onclick=()=>{SFX.click();G.code=null;resetGame(nm.value.trim());begin();};
-  if(jb)jb.onclick=()=>{SFX.click();joinGame(gc.value.trim(),nm.value.trim());};
+  go.onclick=()=>{SFX.click();BGM.start();G.code=null;resetGame(nm.value.trim());begin();};
+  if(jb)jb.onclick=()=>{SFX.click();BGM.start();joinGame(gc.value.trim(),nm.value.trim());};
   const urlCode=(new URLSearchParams(location.search).get("code")||"").replace(/\D/g,"").slice(0,6);
   if(gc&&urlCode){gc.value=urlCode;upd();nm.focus();}else (gc||nm).focus();
 }
@@ -362,7 +403,7 @@ function lobby(){
 function removed(){stopTimer();leaveLive();startScreen();joinErr("Your teacher removed you from the game. You can join again with a different name.<span class='zh'>老师把你移出了游戏，可以换个名字重新加入。</span>");}
 function endedByTeacher(){
   if(G.phase==="done"||G.phase==="over")return;
-  stopTimer();G.phase="over";sync({state:G.started?"stopped":"lobby"});
+  stopTimer();BGM.stop();G.phase="over";sync({state:G.started?"stopped":"lobby"});
   setRoomColor(null);
   card.innerHTML=`<div class="center" style="display:flex;flex-direction:column;gap:14px">
     ${tiki("wow")}<h2>Your teacher ended the game.</h2><span class="muted">老师结束了游戏。</span>
@@ -538,7 +579,7 @@ function reviewHTML(){
 }
 function stars(n){return `<div class="stars" aria-label="${n} of 3 stars">${[0,1,2].map(i=>i<n?"★":`<span class="off">★</span>`).join("")}</div>`;}
 function win(){
-  SFX.win();confetti();
+  BGM.stop();SFX.win();confetti();
   const used=TOTAL_TIME-G.timeLeft;const bonus=G.timeLeft;G.score+=bonus;renderStatus();
   const w=G.firstWrong.length;const n=w<=3&&G.timeLeft>=180?3:w<=8?2:1;
   G.phase="done";sync({state:"escaped",stars:n,timeUsed:used,finishedAt:LIVE_OK?firebase.database.ServerValue.TIMESTAMP:Date.now()});
@@ -552,7 +593,7 @@ function win(){
   if($("again"))$("again").onclick=startScreen;
 }
 function timeUp(){
-  if(G.phase==="over"||G.phase==="done")return;G.phase="over";SFX.bad();sync({state:"timeup",timeLeft:0});
+  if(G.phase==="over"||G.phase==="done")return;G.phase="over";BGM.stop();SFX.bad();sync({state:"timeup",timeLeft:0});
   setRoomColor(null);
   card.innerHTML=`<div class="center" style="display:flex;flex-direction:column;gap:14px">
     ${tiki("sad","shake")}<h2>Time's up, ${esc(G.name)}!</h2><span class="muted">时间到了！别灰心，再试一次。</span>
