@@ -472,10 +472,11 @@ function sync(extra){
     timeLeft:G.timeLeft,state:st,updatedAt:firebase.database.ServerValue.TIMESTAMP},extra||{})).catch(()=>{});
 }
 function joinErr(msg){const e=$("joinErr");if(e){e.hidden=false;e.innerHTML=msg;}}
-async function joinGame(code,name){
+async function freshAuth(force){if(force){try{await AUTH.signOut();}catch(e){}}if(!AUTH.currentUser)await AUTH.signInAnonymously();await AUTH.currentUser.getIdToken(true);}
+async function joinGame(code,name,retry){
   const jb=$("join");jb.disabled=true;jb.textContent="Joining…";
   try{
-    if(!AUTH.currentUser)await AUTH.signInAnonymously();
+    await freshAuth(!!retry);
     const gref=DBX.ref("games/"+code);
     const snap=await gref.child("status").get();
     if(!snap.exists()){joinErr("Game code not found. Check the code with your teacher.<span class='zh'>找不到这个游戏密码，请向老师确认。</span>");jb.disabled=false;jb.textContent="Join game";return;}
@@ -487,7 +488,7 @@ async function joinGame(code,name){
     G.ref.on("value",s=>{if(s.exists()){joined=true;return;}if(joined&&G.code===code&&G.phase!=="done"&&G.phase!=="over")removed();});
     gref.child("status").on("value",s=>{if(G.code!==code)return;const v=s.val();
       if(v==="live")begin();else if(v==="ended")endedByTeacher();else if(v==="lobby"&&!G.started)lobby();});
-  }catch(err){joinErr("Could not join. Check your internet and try again.<span class='zh'>无法加入，请检查网络再试。</span>");jb.disabled=false;jb.textContent="Join game";}
+  }catch(err){if(!retry&&/permission/i.test(err&&err.message||""))return joinGame(code,name,true);joinErr("Could not join. Check your internet and try again.<span class='zh'>无法加入，请检查网络再试。</span>");jb.disabled=false;jb.textContent="Join game";}
 }
 function leaveLive(){if(G.code&&DBX){DBX.ref("games/"+G.code).child("status").off();if(G.ref)G.ref.off();}G.code=null;G.ref=null;}
 function lobby(){

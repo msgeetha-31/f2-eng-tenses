@@ -138,7 +138,10 @@ const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},s
 let code=null, game=null, gref=null, uid=null;
 
 AUTH.signInAnonymously().catch(err=>{app.innerHTML=`<div class="card"><h2>Could not connect</h2><p>${esc(err.message)}</p></div>`;});
-AUTH.onAuthStateChanged(u=>{if(!u)return;uid=u.uid;const saved=store.get("teacherGame");saved?watch(saved):home();});
+let booted=false;
+AUTH.onAuthStateChanged(u=>{if(!u)return;uid=u.uid;if(booted)return;booted=true;const saved=store.get("teacherGame");saved?watch(saved):home();});
+async function freshAuth(force){if(force){try{await AUTH.signOut();}catch(e){}}if(!AUTH.currentUser)await AUTH.signInAnonymously();await AUTH.currentUser.getIdToken(true);return AUTH.currentUser.uid;}
+
 
 function home(msg){
   stopWatch();code=null;game=null;store.set("teacherGame",null);
@@ -154,16 +157,23 @@ function home(msg){
 
 async function newGame(){
   const b=document.getElementById("new");if(b){b.disabled=true;b.textContent="Creating…";}
-  try{
+  const tryCreate=async()=>{
     for(let t=0;t<8;t++){
       const c=String(Math.floor(100000+Math.random()*900000));
       const ex=await DB.ref("games/"+c+"/status").get();
       if(ex.exists())continue;
       await DB.ref("games/"+c).update({owner:uid,status:"lobby",createdAt:TS});
-      store.set("teacherGame",c);watch(c);return;
+      store.set("teacherGame",c);watch(c);return true;
     }
-    home("Could not create a game code. Please try again.");
-  }catch(e){home("Could not create the game: "+e.message);}
+    return false;
+  };
+  try{
+    uid=await freshAuth(false);
+    let ok;
+    try{ok=await tryCreate();}
+    catch(e){if(!/permission/i.test(e.message||""))throw e;uid=await freshAuth(true);ok=await tryCreate();}
+    if(!ok)home("Could not create a game code. Please try again.");
+  }catch(e){home("Could not create the game. Check your internet connection and try again. ("+(e.message||e)+")");}
 }
 
 function stopWatch(){if(gref)gref.off();gref=null;}
