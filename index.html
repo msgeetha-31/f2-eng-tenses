@@ -158,6 +158,37 @@ body.danger::after{animation:heartbeat 1s infinite}
 @keyframes fl{to{opacity:0}}
 @media (max-width:560px){.deco .torch,.deco .chain{display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Door keypad unlock */
+.vaultwrap{display:flex;flex-direction:column;gap:12px;align-items:center}
+.vault{position:relative;width:180px;height:236px;margin:6px auto;perspective:800px;border-radius:90px 90px 6px 6px;background:#05060b;
+  box-shadow:inset 0 0 30px #000,0 0 0 10px #2a2f3e,0 0 0 13px #11141d,0 18px 30px rgba(0,0,0,.5)}
+.vault .beyond{position:absolute;inset:0;border-radius:inherit;opacity:0;transition:opacity 1s;
+  background:radial-gradient(ellipse at 50% 60%,#fffbe8 0%,#ffd77a 25%,rgba(255,150,50,.45) 55%,transparent 80%)}
+.vault.lit .beyond{opacity:1}
+.vault .door{position:absolute;inset:0;width:100%;height:100%;margin:0;perspective:none;filter:none}
+.vault .door .leaf{display:block;width:100%;height:100%;transform-origin:left center;transition:transform 1.3s cubic-bezier(.55,0,.3,1)}
+.vault .door.open .leaf{transform:rotateY(-108deg)}
+.door .bolts{transition:transform .35s ease-in}
+.door.unbolt .bolts{transform:translateX(-22px)}
+.vault.shake{animation:shake .4s}
+.clue{background:#eadcb4;border:2px dashed #8a6a2c;border-radius:10px;padding:8px 20px;transform:rotate(-1.5deg);text-align:center;max-width:340px}
+.clue b{display:block;font-size:24pt;letter-spacing:8px;color:#7a1f12;line-height:1.2}
+.codebox2{display:flex;gap:10px}
+.codebox2 span{width:54px;height:62px;border-radius:10px;background:#141826;color:var(--torch);font-size:28pt;font-weight:bold;display:grid;place-items:center;
+  border:2px solid #3a4256;box-shadow:inset 0 0 12px #000;transition:border-color .2s,color .2s,box-shadow .2s}
+.codebox2 span.f{border-color:var(--torch)}
+.codebox2.bad span{border-color:var(--blood);color:var(--blood)}
+.codebox2.good span{border-color:#2bd47d;color:#2bd47d;box-shadow:0 0 16px #2bd47d}
+.keypad{display:grid;grid-template-columns:repeat(3,66px);gap:8px}
+.keypad .k{height:52px;border-radius:10px;background:linear-gradient(#4a5268,#2c3344);color:#f3e6c8;font-size:18pt;font-weight:bold;border:1px solid #11141d;box-shadow:0 4px 0 #11141d}
+.keypad .k:active{transform:translateY(3px);box-shadow:0 1px 0 #11141d}
+.keypad .k.ok{background:linear-gradient(#2bd47d,#16955a);color:#fff;font-size:14pt}
+.keypad .k:disabled{opacity:.6;cursor:default}
+.vaultwrap.zoom .vault{transform:scale(2.6);opacity:0;transition:transform .65s ease-in,opacity .65s ease-in}
+.vaultwrap.zoom>:not(.vault){opacity:0;transition:opacity .3s}
+@media (max-width:560px){.vault{width:140px;height:184px}.keypad{grid-template-columns:repeat(3,60px);gap:6px}.keypad .k{height:46px}.codebox2 span{width:48px;height:54px;font-size:24pt}.clue b{font-size:20pt}}
+@media (prefers-reduced-motion:reduce){.vault .door .leaf,.door .bolts{transition:none}}
 </style>
 </head>
 <body>
@@ -332,6 +363,7 @@ function doorSVG(color){
    <path d="M30 186V40M55 186V22M85 186V22M110 186V40" stroke="#232938" stroke-width="5"/>
    <rect x="8" y="70" width="124" height="12" fill="#232938"/><rect x="8" y="140" width="124" height="12" fill="#232938"/>
    ${rivets}
+   <g class="bolts">${[34,96,160].map(y=>`<rect x="110" y="${y}" width="26" height="10" rx="2" fill="#9aa3b5" stroke="#11141d" stroke-width="2"/>`).join("")}</g>
    <g class="padlock"><circle cx="70" cy="112" r="34" fill="url(#glow)"/>
     <path d="M58 106 V96 a12 12 0 0 1 24 0 V106" fill="none" stroke="#c9ced8" stroke-width="6" stroke-linecap="round"/>
     <rect x="52" y="104" width="36" height="30" rx="5" fill="${color}" stroke="#11141d" stroke-width="3"/>
@@ -480,14 +512,60 @@ function endButtons(label){
 }
 
 // ===== Room intro =====
+// Fixed door codes, revealed as a clue on each door
+const CODES=["315","742","968"];
+const CLUES=[
+  {en:"A code is scratched on the dungeon wall:",zh:"地牢墙上刻着一组密码："},
+  {en:"Tiki found a note behind the last question:",zh:"Tiki 在最后一题后面找到一张纸条："},
+  {en:"Numbers are glowing on the floor:",zh:"地上有几个发光的数字："}];
+function creak(){
+  if(muted)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+  const o=actx.createOscillator(),f=actx.createBiquadFilter(),g=actx.createGain(),t=actx.currentTime;
+  o.type="sawtooth";f.type="bandpass";f.frequency.value=700;f.Q.value=6;
+  o.frequency.setValueAtTime(85,t);o.frequency.linearRampToValueAtTime(150,t+.45);o.frequency.linearRampToValueAtTime(65,t+1.2);
+  g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.3,t+.08);g.gain.linearRampToValueAtTime(.0001,t+1.3);
+  o.connect(f).connect(g).connect(actx.destination);o.start(t);o.stop(t+1.4);}catch(e){}
+}
 function roomIntro(){
   const r=ROOMS[G.room];setRoomColor(G.room);G.phase="intro";
-  card.innerHTML=`<div class="center" style="display:flex;flex-direction:column;gap:14px">
+  const code=CODES[G.room],clue=CLUES[G.room];let typed="",busy=false;
+  card.innerHTML=`<div class="center vaultwrap" id="vw">
     <h2>${r.name}</h2><span class="muted">${r.zh}</span>
-    <div class="door" id="door">${doorSVG(r.c)}</div>
-    <p style="margin:0">Signal words: <b>${r.signal}</b></p>
-    <button class="btn" id="enter">Open the door</button></div>`;
-  $("enter").onclick=()=>{SFX.click();tone([392,523,784],.09,"sawtooth");$("door").classList.add("open");setTimeout(()=>{G.qi=0;question();},1300);};
+    <div class="vault" id="vault"><div class="beyond"></div><div class="door" id="door">${doorSVG(r.c)}</div></div>
+    <div class="clue">${clue.en}<span class="zh">${clue.zh}</span><b>${code.split("").join(" ")}</b></div>
+    <div class="codebox2" id="cb" aria-label="Code entered"><span></span><span></span><span></span></div>
+    <div class="keypad">${["1","2","3","4","5","6","7","8","9","⌫","0","OK"].map(k=>`<button class="k${k==="OK"?" ok":""}" data-k="${k}" aria-label="${k==="⌫"?"Delete":k}">${k}</button>`).join("")}</div>
+    <div id="fb" aria-live="polite"></div>
+    <p style="margin:0">Signal words: <b>${r.signal}</b></p></div>`;
+  const draw=()=>$("cb").querySelectorAll("span").forEach((el,i)=>{el.textContent=typed[i]||"";el.classList.toggle("f",!!typed[i]);});
+  const kd=e=>{if(G.phase!=="intro"){document.removeEventListener("keydown",kd);return;}
+    if(/^[0-9]$/.test(e.key))press(e.key);else if(e.key==="Backspace")press("⌫");else if(e.key==="Enter"){e.preventDefault();press("OK");}};
+  function press(k){
+    if(busy)return;
+    if(k==="⌫"){typed=typed.slice(0,-1);tone([440],.04,"square");}
+    else if(k==="OK"){check();return;}
+    else if(typed.length<3){typed+=k;tone([760+typed.length*120],.05,"square");}
+    draw();if(typed.length===3){busy=true;setTimeout(()=>{busy=false;check();},250);}
+  }
+  function check(){
+    if(busy)return;
+    if(typed.length<3){$("fb").className="fb no";$("fb").innerHTML=`<b>Enter all 3 numbers.</b><span class="zh">请输入 3 个数字。</span>`;return;}
+    if(typed===code){busy=true;unlock();return;}
+    busy=true;SFX.bad();flash("bad");const v=$("vault");v.classList.remove("shake");void v.offsetWidth;v.classList.add("shake");
+    $("cb").classList.add("bad");$("fb").className="fb no";$("fb").innerHTML=`<b>Wrong code! Look at the clue again.</b><span class="zh">密码错误！再看看线索。</span>`;
+    setTimeout(()=>{typed="";busy=false;$("cb").classList.remove("bad");draw();},700);
+  }
+  function unlock(){
+    document.removeEventListener("keydown",kd);
+    $("cb").classList.add("good");$("fb").innerHTML="";card.querySelectorAll(".k").forEach(b=>b.disabled=true);
+    tone([1250,1500],.04,"square");
+    setTimeout(()=>{tone([110,80],.07,"square");$("door").classList.add("unbolt");},400);
+    setTimeout(()=>{$("door").classList.add("open");$("vault").classList.add("lit");creak();flash("good");},900);
+    setTimeout(()=>{$("vw").classList.add("zoom");tone([392,523,784],.09,"sawtooth");},2300);
+    setTimeout(()=>{G.qi=0;question();},2950);
+  }
+  document.addEventListener("keydown",kd);
+  card.querySelectorAll(".k").forEach(b=>b.onclick=()=>press(b.dataset.k));
 }
 
 // ===== Question =====
